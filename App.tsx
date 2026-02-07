@@ -68,23 +68,77 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadPdf = () => {
+  // Helper to fetch font as base64
+  const fetchFontAsBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        // Remove data URL prefix (e.g. "data:font/ttf;base64,")
+        resolve(base64data.split(',')[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const handleDownloadPdf = async () => {
     if (!result) return;
     
+    // Show some loading state if needed, or just await
     const doc = new jsPDF();
+
+    try {
+      // Fetch Noto Sans Regular and Bold from a CDN
+      // Using jsDelivr for Google Fonts
+      const fontRegularUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5.0.19/files/noto-sans-latin-400-normal.woff';
+      const fontBoldUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5.0.19/files/noto-sans-latin-700-normal.woff';
+
+      // We need a font that supports more extensive unicode if the user has non-latin text.
+      // Noto Sans Global is huge. Let's try Noto Sans (covers Latin, Greek, Cyrillic).
+      // For broader support, we might need a specific subset or a larger font.
+      // Let's stick to Noto Sans (covers Latin, Greek, Cyrillic) which is a safe bet for "gibberish" reports usually from these regions.
+      // If it's CJK, we'd need Noto Sans SC/JP etc. but that's very large for client-side download.
+      // Let's use a Google Font URL that serves the raw file.
+      
+      // Actually, for broad support including Greek/Cyrillic, we should use a font that includes those glyphs.
+      // "NotoSans-Regular.ttf" from a repo or CDN.
+      // Let's use a reliable source for a WOFF or TTF with Latin/Greek/Cyrillic support.
+      
+      // Using a widely compatible font url
+      const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf';
+      const fontBoldUrl2 = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf';
+
+      const fontBase64 = await fetchFontAsBase64(fontUrl);
+      const fontBoldBase64 = await fetchFontAsBase64(fontBoldUrl2);
+
+      doc.addFileToVFS('Roboto-Regular.ttf', fontBase64);
+      doc.addFileToVFS('Roboto-Medium.ttf', fontBoldBase64);
+      
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+      doc.addFont('Roboto-Medium.ttf', 'Roboto', 'bold');
+      
+      doc.setFont('Roboto', 'bold');
+    } catch (e) {
+      console.error("Failed to load custom font, falling back to Helvetica", e);
+      doc.setFont('helvetica', 'bold');
+    }
+
     let y = 20;
     const margin = 20;
     const pageWidth = doc.internal.pageSize.getWidth();
     const contentWidth = pageWidth - (margin * 2);
     
-    doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(51, 65, 85);
     doc.text('Extracted Highlights', margin, y);
     y += 10;
     
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    // doc.setFont('helvetica', 'normal'); // Switch to normal
+    doc.setFont('Roboto', 'normal');
     doc.setTextColor(100, 116, 139);
     doc.text(`Source: ${fileName}`, margin, y);
     y += 15;
@@ -97,13 +151,15 @@ const App: React.FC = () => {
         y = 20;
       }
       
-      doc.setFont('helvetica', 'bold');
+      // doc.setFont('helvetica', 'bold');
+      doc.setFont('Roboto', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(99, 102, 241); // indigo-500
       doc.text(`PAGE ${h.page || '?'}:`, margin, y);
       y += 6;
       
-      doc.setFont('helvetica', 'normal');
+      // doc.setFont('helvetica', 'normal');
+      doc.setFont('Roboto', 'normal');
       doc.setFontSize(11);
       doc.setTextColor(51, 65, 85);
       const textLines = doc.splitTextToSize(h.text, contentWidth);
