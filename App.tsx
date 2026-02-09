@@ -211,7 +211,7 @@ const App: React.FC = () => {
               </button>
             )}
             <a 
-              href="https://georgiostragkas.gumroad.com/coffee" 
+              href="https://www.paypal.com/donate/?hosted_button_id=7FPYT9237XFCC" 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-sm font-medium transition-colors border border-indigo-100"
